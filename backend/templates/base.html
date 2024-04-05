@@ -4,56 +4,85 @@
     <meta charset="UTF-8">
     <title>SubMatch - Discover Subreddits</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/f4e5dcf0e0.js" crossorigin="anonymous"></script>
 </head>
 <body>
-    <div class="banner">SubMatch</div>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <img src="/static/images/logo.png" alt="SubMatch Logo" class="logo">
+                <h1 class="header-title">SubMatch</h1>
+            </div>
+        </div>
+    </header>
 
-    <div class="input-box">
-        <input class="keyword-input" placeholder="Keyword 1" id="keyword1">
-        <input class="keyword-input" placeholder="Keyword 2" id="keyword2">
-        <input class="keyword-input" placeholder="Keyword 3" id="keyword3">
-        <button class="find-button" onclick="findSubreddits()">Find Subreddits</button>
-    </div>
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h2 class="hero-title">Discover Subreddits</h2>
+                <form id="subreddit-form" class="subreddit-form">
+                    <input class="keyword-input" placeholder="Enter three keywords (comma-separated)" name="keywords" required>
+                    <button type="submit" class="find-button">Find</button>
+                </form>
+            </div>
+        </section>
 
-    <div id="answer-box"></div>
+        <section class="results">
+            <div class="container">
+                <div id="answer-box" class="answer-box"></div>
+            </div>
+        </section>
+    </main>
 
     <script>
-        function findSubreddits() {
-            const keywords = [
-                document.getElementById("keyword1").value,
-                document.getElementById("keyword2").value,
-                document.getElementById("keyword3").value
-            ].join(" ");
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('subreddit-form');
+            const answerBox = document.getElementById('answer-box');
 
-            fetch(`/recommend?query=${encodeURIComponent(keywords)}`)
-                .then(response => response.json())
-                .then(data => {
-                    const answerBox = document.getElementById("answer-box");
-                    answerBox.innerHTML = ""; // Clear previous results
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
 
-                    const subreddits = data.slice(0, 3); // Get the first three subreddits
+                const formData = new FormData(form);
+                const keywords = formData.get('keywords');
 
-                    if (subreddits.length === 0) {
-                        const div = document.createElement("div");
-                        div.textContent = "No subreddits found.";
-                        answerBox.appendChild(div);
-                    } else {
-                        subreddits.forEach(subreddit => {
-                            const link = document.createElement("a");
-                            link.href = `https://www.reddit.com/r/${subreddit}`;
-                            link.target = "_blank";
-                            link.textContent = subreddit;
+                fetch(`/recommend?query=${encodeURIComponent(keywords)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        answerBox.innerHTML = ''; // Clear previous results
 
-                            const div = document.createElement("div");
-                            div.textContent = "Recommended subreddit: ";
-                            div.appendChild(link);
+                        if (data.length === 0) {
+                            const message = document.createElement('p');
+                            message.textContent = 'No subreddits found.';
+                            answerBox.appendChild(message);
+                        } else {
+                            const resultsList = document.createElement('ul');
+                            resultsList.className = 'results-list';
 
-                            answerBox.appendChild(div);
-                        });
-                    }
-                })
-                .catch(error => console.error('Error fetching data:', error));
-        }
+                            data.forEach(subreddit => {
+                                const listItem = document.createElement('li');
+                                listItem.className = 'result-item';
+
+                                const subredditLink = document.createElement('a');
+                                subredditLink.href = `https://www.reddit.com/r/${subreddit}`;
+                                subredditLink.target = '_blank';
+                                subredditLink.textContent = `r/${subreddit}`;
+
+                                listItem.appendChild(subredditLink);
+                                resultsList.appendChild(listItem);
+                            });
+
+                            answerBox.appendChild(resultsList);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        const errorMessage = document.createElement('p');
+                        errorMessage.textContent = 'An error occurred while fetching subreddits.';
+                        answerBox.appendChild(errorMessage);
+                    });
+            });
+        });
     </script>
 </body>
 </html>
