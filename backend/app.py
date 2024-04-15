@@ -34,13 +34,13 @@ for comment in comments_data:
 # Prepare data for TF-IDF
 subreddits = list(subreddit_agg_texts.keys())
 texts = list(subreddit_agg_texts.values())
-
-# Compute TF-IDF matrix
 vectorizer = TfidfVectorizer()
 tfidf_matrix = vectorizer.fit_transform(texts)
 
+# Store user feedback
+user_feedback = {}
+
 def custom_stopwords():
-    # Custom stopwords to exclude more common but less informative words
     stop_words = set(stopwords.words('english'))
     more_stopwords = {'love', 'like', 'just', 'also', 'really', 'very', 'much', 'can', 'will', 'one', 'use', 'would', 'and', 'or'}
     stop_words.update(more_stopwords)
@@ -54,11 +54,19 @@ def extract_keywords(text):
     keywords = [word for word, tag in tagged_words if tag.startswith('NN') and word.lower() not in stop_words]
     return keywords
 
-def rocchio(query_vector, relevant_vectors, irrelevant_vectors, alpha=1, beta=0.8, gamma=0.1):
+def rocchio(query_vector, relevant_vectors, irrelevant_vectors, alpha=1, beta=0.75, gamma=0.25):
     query_vector = np.asarray(query_vector.mean(axis=0)).ravel()
-    relevant_centroid = np.asarray(relevant_vectors.mean(axis=0)).ravel()
-    irrelevant_centroid = np.asarray(irrelevant_vectors.mean(axis=0)).ravel()
     
+    if relevant_vectors is not None and relevant_vectors.shape[0] > 0:
+        relevant_centroid = np.asarray(relevant_vectors.mean(axis=0)).ravel()
+    else:
+        relevant_centroid = np.zeros_like(query_vector)
+    
+    if irrelevant_vectors is not None and irrelevant_vectors.shape[0] > 0:
+        irrelevant_centroid = np.asarray(irrelevant_vectors.mean(axis=0)).ravel()
+    else:
+        irrelevant_centroid = np.zeros_like(query_vector)
+
     new_query_vector = alpha * query_vector + beta * relevant_centroid - gamma * irrelevant_centroid
     return new_query_vector.reshape(1, -1)
 
@@ -72,37 +80,41 @@ def recommend_subreddits():
     if not query:
         return jsonify([])
 
-    # Extract keywords using the enhanced method
     keywords = extract_keywords(query)
-
-    # If no keywords, return empty
     if not keywords:
         return jsonify([])
 
-    # Join keywords for vectorization
     keyword_query = ' '.join(keywords)
     query_vector = vectorizer.transform([keyword_query.lower()])
 
-    # Compute cosine similarity
+    # get user feedback for current query
+    query_feedback = user_feedback.get(query, {})
+
+    relevant_indices = [i for i, s in enumerate(subreddits) if query_feedback.get(s, False)]
+    irrelevant_indices = [i for i, s in enumerate(subreddits) if query_feedback.get(s, True) is False]
+
+    relevant_vectors = tfidf_matrix[relevant_indices] if relevant_indices else None
+    irrelevant_vectors = tfidf_matrix[irrelevant_indices] if irrelevant_indices else None
+
+    if relevant_vectors is not None or irrelevant_vectors is not None:
+        query_vector = rocchio(query_vector, relevant_vectors, irrelevant_vectors)
+
     cos_similarities = cosine_similarity(query_vector, tfidf_matrix)
 
-    # Get the top 3 subreddits based on cosine similarity
     top_indices = np.argsort(cos_similarities[0])[::-1][:3]
     top_subreddits = [subreddits[index] for index in top_indices]
 
-    # apply Rocchio
-    relevant_vectors = tfidf_matrix[top_indices]
-    irrelevant_vectors = tfidf_matrix[[i for i in range(len(subreddits)) if i not in top_indices]]
-    expanded_query_vector = rocchio(query_vector, relevant_vectors, irrelevant_vectors)
+    return jsonify(top_subreddits)
 
-    # compute cosine similarity with expanded query vector
-    expanded_cos_similarities = cosine_similarity(expanded_query_vector, tfidf_matrix)
-
-    # get top 3 subreddits based on expanded query
-    expanded_top_indices = np.argsort(expanded_cos_similarities[0])[::-1][:3]
-    expanded_top_subreddits = [subreddits[index] for index in expanded_top_indices]
-
-    return jsonify(expanded_top_subreddits)
+@app.route("/feedback", methods=["POST"])
+def feedback():
+    query = request.args.get("query")
+    subreddit = request.args.get("subreddit")
+    is_relevant = request.args.get("isRelevant", 'false').lower() == 'true'
+    query_feedback = user_feedback.get(query, {})
+    query_feedback[subreddit] = is_relevant
+    user_feedback[query] = query_feedback
+    return "Feedback received", 200
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

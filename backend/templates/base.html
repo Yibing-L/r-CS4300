@@ -46,7 +46,6 @@
 
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
-
                 const formData = new FormData(form);
                 const keywords = formData.get('keywords');
 
@@ -54,28 +53,36 @@
                     .then(response => response.json())
                     .then(data => {
                         answerBox.innerHTML = ''; // Clear previous results
-
                         if (data.length === 0) {
                             const message = document.createElement('p');
-                            message.textContent = 'Please input more information.';
+                            message.textContent = 'No relevant subreddits found. Please try different keywords.';
                             answerBox.appendChild(message);
                         } else {
                             const resultsList = document.createElement('ul');
                             resultsList.className = 'results-list';
-
                             data.forEach(subreddit => {
                                 const listItem = document.createElement('li');
                                 listItem.className = 'result-item';
-
                                 const subredditLink = document.createElement('a');
                                 subredditLink.href = `https://www.reddit.com/r/${subreddit}`;
                                 subredditLink.target = '_blank';
                                 subredditLink.textContent = `r/${subreddit}`;
 
+                                const relevantButton = document.createElement('button');
+                                relevantButton.textContent = 'Relevant';
+                                relevantButton.className = 'feedback-button';
+                                relevantButton.onclick = () => sendFeedback(subreddit, true);
+
+                                const irrelevantButton = document.createElement('button');
+                                irrelevantButton.textContent = 'Irrelevant';
+                                irrelevantButton.className = 'feedback-button irrelevant';
+                                irrelevantButton.onclick = () => sendFeedback(subreddit, false);
+
                                 listItem.appendChild(subredditLink);
+                                listItem.appendChild(relevantButton);
+                                listItem.appendChild(irrelevantButton);
                                 resultsList.appendChild(listItem);
                             });
-
                             answerBox.appendChild(resultsList);
                         }
                     })
@@ -86,6 +93,14 @@
                         answerBox.appendChild(errorMessage);
                     });
             });
+
+            function sendFeedback(subreddit, isRelevant) {
+                fetch(`/feedback?subreddit=${encodeURIComponent(subreddit)}&isRelevant=${isRelevant}`, {
+                    method: 'POST'
+                })
+                .then(response => console.log('Feedback sent!'))
+                .catch(error => console.error('Error sending feedback:', error));
+            }
         });
     </script>
 </body>

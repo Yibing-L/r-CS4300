@@ -129,3 +129,24 @@ body {
     font-size: 16px;
     color: #D7DADC;
 }
+
+
+.feedback-button {
+    padding: 8px 16px;
+    background-color: #FF4500;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+.feedback-button.irrelevant {
+    background-color: #555;
+}
+
+.feedback-button:hover {
+    opacity: 0.8;
+}
