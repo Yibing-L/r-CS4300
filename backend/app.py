@@ -18,7 +18,6 @@ app = Flask(__name__)
 
 # Load the dataset at app start
 DATASET_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'init.json')
-
 with open(DATASET_PATH, 'r') as file:
     comments_data = json.load(file)
 
@@ -43,7 +42,7 @@ tfidf_matrix = vectorizer.fit_transform(texts)
 def custom_stopwords():
     # Custom stopwords to exclude more common but less informative words
     stop_words = set(stopwords.words('english'))
-    more_stopwords = {'love', 'like', 'just', 'also', 'really', 'very', 'much', 'can', 'will', 'one', 'use', 'would','and','or'}
+    more_stopwords = {'love', 'like', 'just', 'also', 'really', 'very', 'much', 'can', 'will', 'one', 'use', 'would', 'and', 'or'}
     stop_words.update(more_stopwords)
     stop_words.update(string.ascii_lowercase)  # Add single letters
     return stop_words
@@ -54,6 +53,14 @@ def extract_keywords(text):
     tagged_words = pos_tag(words)
     keywords = [word for word, tag in tagged_words if tag.startswith('NN') and word.lower() not in stop_words]
     return keywords
+
+def rocchio(query_vector, relevant_vectors, irrelevant_vectors, alpha=1, beta=0.8, gamma=0.1):
+    query_vector = np.asarray(query_vector.mean(axis=0)).ravel()
+    relevant_centroid = np.asarray(relevant_vectors.mean(axis=0)).ravel()
+    irrelevant_centroid = np.asarray(irrelevant_vectors.mean(axis=0)).ravel()
+    
+    new_query_vector = alpha * query_vector + beta * relevant_centroid - gamma * irrelevant_centroid
+    return new_query_vector.reshape(1, -1)
 
 @app.route("/")
 def home():
@@ -83,7 +90,19 @@ def recommend_subreddits():
     top_indices = np.argsort(cos_similarities[0])[::-1][:3]
     top_subreddits = [subreddits[index] for index in top_indices]
 
-    return jsonify(top_subreddits)
+    # apply Rocchio
+    relevant_vectors = tfidf_matrix[top_indices]
+    irrelevant_vectors = tfidf_matrix[[i for i in range(len(subreddits)) if i not in top_indices]]
+    expanded_query_vector = rocchio(query_vector, relevant_vectors, irrelevant_vectors)
+
+    # compute cosine similarity with expanded query vector
+    expanded_cos_similarities = cosine_similarity(expanded_query_vector, tfidf_matrix)
+
+    # get top 3 subreddits based on expanded query
+    expanded_top_indices = np.argsort(expanded_cos_similarities[0])[::-1][:3]
+    expanded_top_subreddits = [subreddits[index] for index in expanded_top_indices]
+
+    return jsonify(expanded_top_subreddits)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
