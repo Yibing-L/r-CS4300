@@ -10,7 +10,7 @@ cloudpathlib==0.16.0
 colorama==0.4.6
 confection==0.1.4
 contourpy==1.2.0
-convokit==3.0.0
+convokit
 cryptography==39.0.2
 cycler==0.12.1
 cymem==2.0.8
