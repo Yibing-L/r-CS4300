@@ -5,8 +5,7 @@
     <meta charset="UTF-8">
     <title>SubMatch - Discover Subreddits</title>
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://kit.fontawesome.com/f4e5dcf0e0.js" crossorigin="anonymous"></script>
 </head>
 
@@ -25,8 +24,7 @@
             <div class="container">
                 <h2 class="hero-title">Discover Subreddits</h2>
                 <form id="subreddit-form" class="subreddit-form">
-                    <input class="keyword-input" placeholder="Enter three keywords (comma-separated)" name="keywords"
-                        required>
+                    <input class="keyword-input" placeholder="Enter three keywords (comma-separated)" name="keywords" required>
                     <button type="submit" class="find-button">Find</button>
                 </form>
             </div>
@@ -71,12 +69,12 @@
                                 const relevantButton = document.createElement('button');
                                 relevantButton.textContent = 'Relevant';
                                 relevantButton.className = 'feedback-button';
-                                relevantButton.onclick = () => sendFeedback(subreddit, true);
+                                relevantButton.onclick = () => sendFeedback(keywords, subreddit, true);
 
                                 const irrelevantButton = document.createElement('button');
                                 irrelevantButton.textContent = 'Irrelevant';
                                 irrelevantButton.className = 'feedback-button irrelevant';
-                                irrelevantButton.onclick = () => sendFeedback(subreddit, false);
+                                irrelevantButton.onclick = () => sendFeedback(keywords, subreddit, false);
 
                                 listItem.appendChild(subredditLink);
                                 listItem.appendChild(relevantButton);
@@ -94,8 +92,8 @@
                     });
             });
 
-            function sendFeedback(subreddit, isRelevant) {
-                fetch(`/feedback?subreddit=${encodeURIComponent(subreddit)}&isRelevant=${isRelevant}`, {
+            function sendFeedback(query, subreddit, isRelevant) {
+                fetch(`/feedback?query=${encodeURIComponent(query)}&subreddit=${encodeURIComponent(subreddit)}&isRelevant=${isRelevant}`, {
                     method: 'POST'
                 })
                 .then(response => console.log('Feedback sent!'))

@@ -87,7 +87,7 @@ def recommend_subreddits():
     keyword_query = ' '.join(keywords)
     query_vector = vectorizer.transform([keyword_query.lower()])
 
-    # get user feedback for current query
+    # Get the user feedback for the current query
     query_feedback = user_feedback.get(query, {})
 
     relevant_indices = [i for i, s in enumerate(subreddits) if query_feedback.get(s, False)]
