@@ -1,12 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <title>SubMatch - Discover Subreddits</title>
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script src="https://kit.fontawesome.com/f4e5dcf0e0.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Include Chart.js -->
 </head>
 
 <body>
@@ -18,7 +19,6 @@
             </div>
         </div>
     </header>
-
     <main>
         <section class="hero">
             <div class="container">
@@ -29,14 +29,12 @@
                 </form>
             </div>
         </section>
-
         <section class="results">
             <div class="container">
                 <div id="answer-box" class="answer-box"></div>
             </div>
         </section>
     </main>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById('subreddit-form');
@@ -56,32 +54,33 @@
                             message.textContent = 'No relevant subreddits found. Please try different keywords.';
                             answerBox.appendChild(message);
                         } else {
-                            const resultsList = document.createElement('ul');
-                            resultsList.className = 'results-list';
                             data.forEach(subreddit => {
-                                const listItem = document.createElement('li');
-                                listItem.className = 'result-item';
+                                const resultDiv = document.createElement('div');
+                                resultDiv.className = 'result-item';
                                 const subredditLink = document.createElement('a');
-                                subredditLink.href = `https://www.reddit.com/r/${subreddit}`;
+                                subredditLink.href = `https://www.reddit.com/r/${subreddit.subreddit}`;
                                 subredditLink.target = '_blank';
-                                subredditLink.textContent = `r/${subreddit}`;
+                                subredditLink.textContent = `r/${subreddit.subreddit}`;
+
+                                const similarityScore = document.createElement('span');
+                                similarityScore.textContent = ` (Similarity Score: ${subreddit.similarity_score.toFixed(4)}) `;
 
                                 const relevantButton = document.createElement('button');
                                 relevantButton.textContent = 'Relevant';
                                 relevantButton.className = 'feedback-button';
-                                relevantButton.onclick = () => sendFeedback(keywords, subreddit, true);
+                                relevantButton.onclick = () => sendFeedback(keywords, subreddit.subreddit, true);
 
                                 const irrelevantButton = document.createElement('button');
                                 irrelevantButton.textContent = 'Irrelevant';
                                 irrelevantButton.className = 'feedback-button irrelevant';
-                                irrelevantButton.onclick = () => sendFeedback(keywords, subreddit, false);
+                                irrelevantButton.onclick = () => sendFeedback(keywords, subreddit.subreddit, false);
 
-                                listItem.appendChild(subredditLink);
-                                listItem.appendChild(relevantButton);
-                                listItem.appendChild(irrelevantButton);
-                                resultsList.appendChild(listItem);
+                                resultDiv.appendChild(subredditLink);
+                                resultDiv.appendChild(similarityScore);
+                                resultDiv.appendChild(relevantButton);
+                                resultDiv.appendChild(irrelevantButton);
+                                answerBox.appendChild(resultDiv);
                             });
-                            answerBox.appendChild(resultsList);
                         }
                     })
                     .catch(error => {
@@ -96,8 +95,8 @@
                 fetch(`/feedback?query=${encodeURIComponent(query)}&subreddit=${encodeURIComponent(subreddit)}&isRelevant=${isRelevant}`, {
                     method: 'POST'
                 })
-                .then(response => console.log('Feedback sent!'))
-                .catch(error => console.error('Error sending feedback:', error));
+                    .then(response => console.log('Feedback sent!'))
+                    .catch(error => console.error('Error sending feedback:', error));
             }
         });
     </script>
