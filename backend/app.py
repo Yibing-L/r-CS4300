@@ -9,6 +9,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag
 import string
+from sklearn.decomposition import TruncatedSVD
 
 nltk.download("stopwords")
 nltk.download("punkt")
@@ -37,9 +38,9 @@ texts = list(subreddit_agg_texts.values())
 vectorizer = TfidfVectorizer()
 tfidf_matrix = vectorizer.fit_transform(texts)
 
-# Store user feedback
-user_feedback = {}
-
+# Perform SVD
+svd = TruncatedSVD(n_components=100)
+svd_matrix = svd.fit_transform(tfidf_matrix)
 
 def custom_stopwords():
     stop_words = set(stopwords.words("english"))
@@ -76,27 +77,6 @@ def extract_keywords(text):
     return keywords
 
 
-def rocchio(
-    query_vector, relevant_vectors, irrelevant_vectors, alpha=1, beta=0.75, gamma=0.25
-):
-    query_vector = np.asarray(query_vector.mean(axis=0)).ravel()
-
-    if relevant_vectors is not None and relevant_vectors.shape[0] > 0:
-        relevant_centroid = np.asarray(relevant_vectors.mean(axis=0)).ravel()
-    else:
-        relevant_centroid = np.zeros_like(query_vector)
-
-    if irrelevant_vectors is not None and irrelevant_vectors.shape[0] > 0:
-        irrelevant_centroid = np.asarray(irrelevant_vectors.mean(axis=0)).ravel()
-    else:
-        irrelevant_centroid = np.zeros_like(query_vector)
-
-    new_query_vector = (
-        alpha * query_vector + beta * relevant_centroid - gamma * irrelevant_centroid
-    )
-    return new_query_vector.reshape(1, -1)
-
-
 @app.route("/")
 def home():
     return render_template("base.html")
@@ -114,26 +94,10 @@ def recommend_subreddits():
 
     keyword_query = " ".join(keywords)
     query_vector = vectorizer.transform([keyword_query.lower()])
+    query_svd = svd.transform(query_vector)
 
-    # Get the user feedback for the current query
-    query_feedback = user_feedback.get(query, {})
-
-    relevant_indices = [
-        i for i, s in enumerate(subreddits) if query_feedback.get(s, False)
-    ]
-    irrelevant_indices = [
-        i for i, s in enumerate(subreddits) if query_feedback.get(s, True) is False
-    ]
-
-    relevant_vectors = tfidf_matrix[relevant_indices] if relevant_indices else None
-    irrelevant_vectors = (
-        tfidf_matrix[irrelevant_indices] if irrelevant_indices else None
-    )
-
-    if relevant_vectors is not None or irrelevant_vectors is not None:
-        query_vector = rocchio(query_vector, relevant_vectors, irrelevant_vectors)
-
-    cos_similarities = cosine_similarity(query_vector, tfidf_matrix)
+    # Calculate cosine similarities using SVD matrix
+    cos_similarities = cosine_similarity(query_svd, svd_matrix)
 
     top_indices = np.argsort(cos_similarities[0])[::-1][:5]
     top_subreddits = [subreddits[index] for index in top_indices]
@@ -143,17 +107,6 @@ def recommend_subreddits():
         for subreddit, score in zip(top_subreddits, similarity_scores)
     ]
     return jsonify(results)
-
-
-@app.route("/feedback", methods=["POST"])
-def feedback():
-    query = request.args.get("query")
-    subreddit = request.args.get("subreddit")
-    is_relevant = request.args.get("isRelevant", "false").lower() == "true"
-    query_feedback = user_feedback.get(query, {})
-    query_feedback[subreddit] = is_relevant
-    user_feedback[query] = query_feedback
-    return "Feedback received", 200
 
 
 if __name__ == "__main__":

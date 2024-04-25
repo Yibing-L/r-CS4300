@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;700&display=swap"
         rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Include Chart.js -->
 </head>
 
 <body>
@@ -54,33 +53,21 @@
                             message.textContent = 'No relevant subreddits found. Please try different keywords.';
                             answerBox.appendChild(message);
                         } else {
+                            const resultList = document.createElement('ul');
+                            resultList.className = 'results-list';
                             data.forEach(subreddit => {
-                                const resultDiv = document.createElement('div');
-                                resultDiv.className = 'result-item';
+                                const resultItem = document.createElement('li');
+                                resultItem.className = 'result-item';
+
                                 const subredditLink = document.createElement('a');
                                 subredditLink.href = `https://www.reddit.com/r/${subreddit.subreddit}`;
                                 subredditLink.target = '_blank';
-                                subredditLink.textContent = `r/${subreddit.subreddit}`;
+                                subredditLink.textContent = `r/${subreddit.subreddit} (Similarity Score: ${subreddit.similarity_score.toFixed(4)})`;
 
-                                const similarityScore = document.createElement('span');
-                                similarityScore.textContent = ` (Similarity Score: ${subreddit.similarity_score.toFixed(4)}) `;
-
-                                const relevantButton = document.createElement('button');
-                                relevantButton.textContent = 'Relevant';
-                                relevantButton.className = 'feedback-button';
-                                relevantButton.onclick = () => sendFeedback(keywords, subreddit.subreddit, true);
-
-                                const irrelevantButton = document.createElement('button');
-                                irrelevantButton.textContent = 'Irrelevant';
-                                irrelevantButton.className = 'feedback-button irrelevant';
-                                irrelevantButton.onclick = () => sendFeedback(keywords, subreddit.subreddit, false);
-
-                                resultDiv.appendChild(subredditLink);
-                                resultDiv.appendChild(similarityScore);
-                                resultDiv.appendChild(relevantButton);
-                                resultDiv.appendChild(irrelevantButton);
-                                answerBox.appendChild(resultDiv);
+                                resultItem.appendChild(subredditLink);
+                                resultList.appendChild(resultItem);
                             });
+                            answerBox.appendChild(resultList);
                         }
                     })
                     .catch(error => {
@@ -90,14 +77,6 @@
                         answerBox.appendChild(errorMessage);
                     });
             });
-
-            function sendFeedback(query, subreddit, isRelevant) {
-                fetch(`/feedback?query=${encodeURIComponent(query)}&subreddit=${encodeURIComponent(subreddit)}&isRelevant=${isRelevant}`, {
-                    method: 'POST'
-                })
-                    .then(response => console.log('Feedback sent!'))
-                    .catch(error => console.error('Error sending feedback:', error));
-            }
         });
     </script>
 </body>
