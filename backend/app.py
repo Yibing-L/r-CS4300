@@ -8,7 +8,7 @@ from sklearn.decomposition import TruncatedSVD
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
-DATASET_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analyzed_data.json")
+DATASET_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init.json")
 with open(DATASET_PATH, "r") as file:
     analyzed_data = json.load(file)
 
