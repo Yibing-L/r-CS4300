@@ -4,83 +4,30 @@ import os
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.tag import pos_tag
-import string
 from sklearn.decomposition import TruncatedSVD
 
-nltk.download("stopwords")
-nltk.download("punkt")
-nltk.download("averaged_perceptron_tagger")
+app = Flask(__name__, static_folder='static', template_folder='templates')
 
-app = Flask(__name__)
-
-# Load the dataset at app start
-DATASET_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init.json")
+DATASET_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analyzed_data.json")
 with open(DATASET_PATH, "r") as file:
-    comments_data = json.load(file)
+    analyzed_data = json.load(file)
 
-# Aggregating texts by subreddit
-subreddit_agg_texts = {}
-for comment in comments_data:
-    subreddit = comment["subreddit"]
-    text = comment["text"].lower()
-    if subreddit in subreddit_agg_texts:
-        subreddit_agg_texts[subreddit] += " " + text
-    else:
-        subreddit_agg_texts[subreddit] = text
+# extract subreddits and keyword strings
+subreddits = list(analyzed_data.keys())
+keyword_strings = [' '.join(keywords) for keywords in analyzed_data.values()]
 
-# Prepare data for TF-IDF
-subreddits = list(subreddit_agg_texts.keys())
-texts = list(subreddit_agg_texts.values())
 vectorizer = TfidfVectorizer()
-tfidf_matrix = vectorizer.fit_transform(texts)
 
-# Perform SVD
-svd = TruncatedSVD(n_components=100)
+# fit and transform keyword strings to get TF-IDF matrix
+tfidf_matrix = vectorizer.fit_transform(keyword_strings)
+
+# do SVD on TF-IDF matrix
+svd = TruncatedSVD(n_components=1000)
 svd_matrix = svd.fit_transform(tfidf_matrix)
-
-def custom_stopwords():
-    stop_words = set(stopwords.words("english"))
-    more_stopwords = {
-        "love",
-        "like",
-        "just",
-        "also",
-        "really",
-        "very",
-        "much",
-        "can",
-        "will",
-        "one",
-        "use",
-        "would",
-        "and",
-        "or",
-    }
-    stop_words.update(more_stopwords)
-    stop_words.update(string.ascii_lowercase)  # Add single letters
-    return stop_words
-
-
-def extract_keywords(text):
-    stop_words = custom_stopwords()
-    words = word_tokenize(text)
-    tagged_words = pos_tag(words)
-    keywords = [
-        word
-        for word, tag in tagged_words
-        if tag.startswith("NN") and word.lower() not in stop_words
-    ]
-    return keywords
-
 
 @app.route("/")
 def home():
     return render_template("base.html")
-
 
 @app.route("/recommend", methods=["GET"])
 def recommend_subreddits():
@@ -88,26 +35,28 @@ def recommend_subreddits():
     if not query:
         return jsonify([])
 
-    keywords = extract_keywords(query)
-    if not keywords:
-        return jsonify([])
-
-    keyword_query = " ".join(keywords)
-    query_vector = vectorizer.transform([keyword_query.lower()])
+    query_vector = vectorizer.transform([query.lower()])
     query_svd = svd.transform(query_vector)
 
-    # Calculate cosine similarities using SVD matrix
+    # cosine similarities using SVD matrix
     cos_similarities = cosine_similarity(query_svd, svd_matrix)
-
     top_indices = np.argsort(cos_similarities[0])[::-1][:5]
     top_subreddits = [subreddits[index] for index in top_indices]
     similarity_scores = [cos_similarities[0][index] for index in top_indices]
-    results = [
-        {"subreddit": subreddit, "similarity_score": score}
-        for subreddit, score in zip(top_subreddits, similarity_scores)
-    ]
-    return jsonify(results)
 
+    results = []
+    for subreddit, score in zip(top_subreddits, similarity_scores):
+        top_keywords = analyzed_data[subreddit][:10]
+        top_keywords_str = (',' + ' ').join(keyword for keyword in top_keywords)
+
+        result = {
+            "subreddit": subreddit,
+            "similarity_score": score,
+            "top_keywords": top_keywords_str
+        }
+        results.append(result)
+
+    return jsonify(results)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
