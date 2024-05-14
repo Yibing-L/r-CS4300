@@ -3,6 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>SubMatch - Discover Subreddits</title>
+  <style>
+    body 
+      .prominent-comment {
+    font-size: 1.2em; 
+    color: #d35400;
+    background-color: #a88701; 
+    padding: 10px; 
+    border-left: 5px solid #d35400; 
+    margin-top: 10px; 
+    border-radius: 5px; 
+    }
+      .container {
+    width: 80%; /* or max-width: 960px; */
+    margin: 0 auto; /* Centers the container */
+    }
+  </style>
   <link rel="stylesheet" href="/static/style.css">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
@@ -62,13 +78,19 @@
                 const subredditLink = document.createElement('a');
                 subredditLink.href = `https://www.reddit.com/r/${subreddit.subreddit}`;
                 subredditLink.target = '_blank';
-                subredditLink.textContent = `r/${subreddit.subreddit} (Similarity Score: ${subreddit.similarity_score.toFixed(4)})`;
+                subredditLink.textContent = `r/${subreddit.subreddit} `;
                 resultItem.appendChild(subredditLink);
 
-                const topKeywords = document.createElement('p');
-                topKeywords.className = 'top-keywords';
-                topKeywords.textContent = `Top Keywords: ${subreddit.top_keywords}`;
-                resultItem.appendChild(topKeywords);
+                const topDimensions = document.createElement('p');
+                topDimensions.className = 'top-dimensions';
+                topDimensions.textContent = `Top Related Dimensions: ${subreddit.top_dimensions}`;
+                resultItem.appendChild(topDimensions);
+
+                const relatedComment = document.createElement('p');
+                        relatedBackground='indianred';
+                        relatedComment.className = 'related-comment prominent-comment'; 
+                        relatedComment.textContent = `${subreddit.related_comment}`;
+                        resultItem.appendChild(relatedComment);
 
                 resultList.appendChild(resultItem);
               });
